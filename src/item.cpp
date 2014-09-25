@@ -532,6 +532,68 @@ Attr_ReadValue Item::readAttr(AttrTypes_t attr, PropStream& propStream)
 
 			return ATTR_READ_ERROR;
 		}
+		
+		case ATTR_NAME:
+		case ATTR_PLURALNAME:
+                case ATTR_ARTICLE: {
+                        uint16_t n;
+                        if (propStream.GET_USHORT(n))
+                                propStream.SKIP_N(n);
+                        break;
+                }
+		case ATTR_ATTACK:
+		case ATTR_EXTRAATTACK:
+		case ATTR_DEFENSE:
+		case ATTR_EXTRADEFENSE:
+		case ATTR_ARMOR:
+		case ATTR_HITCHANCE:
+		case ATTR_ATTACKSPEED: propStream.SKIP_N(4); break;
+		case ATTR_DUALWIELD:
+		case ATTR_SCRIPTPROTECTED: propStream.SKIP_N(1); break;
+
+		case ATTR_TFS_04_CUSTOM_ATTRS: {
+			uint16_t n;
+			if (!propStream.GET_USHORT(n)) {
+				return ATTR_READ_CONTINUE;
+			}
+
+			while (n--) {
+				std::string key;
+
+				if (!propStream.GET_STRING(key)) {
+					return ATTR_READ_ERROR;
+				}
+
+				uint8_t dataType = 0;
+				if (!propStream.GET_UCHAR(dataType)) {
+					return ATTR_READ_ERROR;
+				}
+
+				if (dataType == 1) {
+					std::string str;
+					if (!propStream.GET_LSTRING(str)) {
+						return ATTR_READ_ERROR;
+					}
+
+					if (key == "description") {
+						setSpecialDescription(str);
+					} else if (key == "writer") {
+						setWriter(str);
+					} else if (key == "text") {
+						setText(str);
+					} else {
+						std::cout << "[Item::readAttr] Unsupported key: " << key << std::endl;
+					}
+				} else if (dataType == 2) {
+					propStream.SKIP_N(4);
+				} else if (dataType == 3) {
+					propStream.SKIP_N(4);
+				} else if (dataType == 4) {
+					propStream.SKIP_N(1);
+				}
+			}
+			break;
+		}
 
 		default:
 			return ATTR_READ_ERROR;
@@ -1082,11 +1144,14 @@ std::string Item::getDescription(const ItemType& it, int32_t lookDistance,
 				} else {
 					s << "You are too far away to read it";
 				}
-			} else if (it.levelDoor != 0 && item) {
-				uint16_t actionId = item->getActionId();
-				if (actionId >= it.levelDoor) {
-					s << " for level " << (actionId - it.levelDoor);
-				}
+			} else if (it.levelDoor && item && item->getActionId() >= 1000 && item->getActionId() <= 1999) {
+				s << " para level " << item->getActionId() - 1000;
+			}
+			else if (it.levelDoor && item && item->getActionId() >= 2000 && item->getActionId() <= 2999) {
+				s << " para reset " << item->getActionId() - 2000;
+			}
+			else if (it.levelDoor && item && item->getActionId() >= 3000 && item->getActionId() <= 3100) {
+				s << " para idade " << item->getActionId() - 3000;
 			}
 		}
 	}
